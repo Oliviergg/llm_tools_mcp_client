@@ -4,52 +4,24 @@ import asyncio
 import json
 from mcp import ClientSession, StdioServerParameters, types
 from mcp.client.stdio import stdio_client
+from pathlib import Path
 
-# Renamed server_params to server_configurations and made it a list
-server_configurations = [
-    StdioServerParameters(
-        # command="/Users/olivier/.local/bin/uv",  # Executable
-        # args=[
-        #     "--directory",
-        #     "/Users/olivier/Dev/boring-news/boring-news-mcp/src/",
-        #     "run",
-        #     "-m", "boring_news_mcp"
-        # ],  # Server script
-        command="/Users/olivier/.local/bin/uv",  # Executable
-        args=[
-                "--directory",
-                "/Users/olivier/python",
-                "run",
-                "-m", "boring_news_mcp"
-        ],  # Server script
-        env=None,  # Optional environment variables
-    ),
-    StdioServerParameters(
-        # command="/Users/olivier/.local/bin/uv",  # Executable
-        # args=[
-        #     "--directory",
-        #     "/Users/olivier/Dev/boring-news/boring-news-mcp/src/",
-        #     "run",
-        #     "-m", "boring_news_mcp"
-        # ],  # Server script
-        # # command="/Users/olivier/.local/bin/uv",  # Executable
-        # # args=[
-        # #         "--directory",
-        # #         "/Users/olivier/python",
-        # #         "run",
-        # #         "-m", "boring_news_mcp"
-        # # ],  # Server script
-        env=None,  # Optional environment variables
-        command="npx",
-        args=["@playwright/mcp@latest"]
-    )
-    # Example of a second server configuration (you can uncomment and modify)
-    # StdioServerParameters(
-    # command="path/to/another/server_executable",
-    # args=["--port", "12346"],
-    #     env=None
-    # )
-]
+# Load MCP server configurations from a JSON file
+def load_mcp_servers_from_json(config_path):
+    with open(config_path, "r") as f:
+        config = json.load(f)
+    servers = []
+    for entry in config.get("mcpServers", {}).values():
+        servers.append(
+            StdioServerParameters(
+                command=entry["command"],
+                args=entry.get("args", []),
+                env=entry.get("env", None)
+            )
+        )
+    return servers
+
+server_configurations = load_mcp_servers_from_json(llm.get_key(alias="MCP_SERVERS_CONFIG", env="MCP_SERVERS_CONFIG"))
 
 class FunctionFactory:
     @staticmethod
@@ -110,18 +82,16 @@ async def get_mcp_tools(configs):
                     print(f"Initializing MCP session for server: {server_id_for_log}...")
                     await session.initialize()
                     print(f"Connected to MCP server {server_id_for_log}. Fetching tools...")
-                    tool_response = await session.list_tools()
-                    print(f"DEBUG: tool_response from {server_id_for_log}: {tool_response.tools if hasattr(tool_response, 'tools') else tool_response}")
-                    
+                    tool_response = await session.list_tools()                    
                     current_server_tools = []
                     if hasattr(tool_response, 'tools') and isinstance(tool_response.tools, list):
                         current_server_tools = tool_response.tools
                     elif isinstance(tool_response, list):
-                         current_server_tools = tool_response 
+                         current_server_tools = tool_response
                     else:
                         print(f"Unexpected response format from list_tools for server {server_id_for_log}: {type(tool_response)}")
                         print(f"Response content: {tool_response}")
-                    
+
                     for tool_spec in current_server_tools:
                         all_tools_with_server_info.append({'spec': tool_spec, 'server_params': server_cfg})
 
@@ -152,14 +122,8 @@ def register_tools(register):
             tool_spec = tool_info['spec']
             server_params_for_tool = tool_info['server_params']
             server_id_for_log = f"{server_params_for_tool.command} {' '.join(server_params_for_tool.args) if server_params_for_tool.args else ''}".strip()
-
-            print(f"DEBUG: Registering tool_item from server {server_id_for_log}: {tool_spec}")
-            print(f"- {tool_spec.name} (from server: {server_id_for_log})")
-            print(f"DEBUG: tool_item.inputSchema: {tool_spec.inputSchema}")
-            print(f"DEBUG: tool_item.description: {tool_spec.description}")
-            # Pass both tool_spec and its server_params_for_tool
             register_llm_tool(FunctionFactory.create_function(tool_spec, server_params_for_tool))        
-
+            print(f"Registered tool {tool_spec.name} from server {server_id_for_log}")
 
     try:
         asyncio.run(_async_register_tools_impl(register))

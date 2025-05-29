@@ -1,12 +1,13 @@
 [project]
-name = "demo"
+name = "llm_tools_mcp_client"
 version = "0.2.0"
-description = "Add your description here"
+description = "Exploring MCP tools for llm"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "llm"
+    "llm", 
+    "mcp"
 ]
 
 [project.entry-points.llm]
-demo = "main"
+llm_tools_mcp_client = "llm_tools_mcp_client"
