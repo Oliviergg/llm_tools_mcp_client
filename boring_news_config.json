@@ -1,0 +1,10 @@
+{
+    "mcpServers": {
+      "boringnews": {
+        "command": "uvx",
+        "args": [
+            "boring-news-mcp"
+        ]
+      }
+    }
+}
