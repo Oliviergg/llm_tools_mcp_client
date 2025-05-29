@@ -8,6 +8,9 @@ from pathlib import Path
 
 # Load MCP server configurations from a JSON file
 def load_mcp_servers_from_json(config_path):
+    if not config_path:
+        return []
+    
     with open(config_path, "r") as f:
         config = json.load(f)
     servers = []
